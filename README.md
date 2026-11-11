@@ -1,7 +1,7 @@
 # 搞机工具箱 Web - 网页版 Android 玩机工具
 
 ## <p align="center"><a href="https://www.bilibili.com/video/BV1TB456ZEoo">使用教程</a>&emsp;&emsp;<a href="https://czjam.github.io/gjgjxweb/">在线体验</a>   </p>
-《搞机工具箱》是一款ADB图形化工具。
+《搞机工具箱》是一款ADB图形化工具。当前版本由本机 Node.js 后端统一代理 ADB 请求，前端不再直接访问 USB ADB。
 
 本项目移植于个人开发的 [《搞机工具箱》PC版](https://www.bilibili.com/video/BV1QvHhzLELb) 。借助 [Tango](https://github.com/yume-chan/ya-webadb) 实现了 WebADB，并通过 [xterm.js](https://github.com/xtermjs/xterm.js) 打通 Android 原生 Shell 交互式终端，可运行在基于Chromium内核的浏览器中，实现免下载、免安装的跨平台使用体验。
 
@@ -25,24 +25,24 @@
 | ADB 终端 | Android Shell 交互会话、ANSI 显示、命令历史、补全、复制、清屏与中断 |
 | 软件设置 | 默认启动页、主题配色、界面缩放、CPU 更新间隔、文件接收路径、安装与截图选项、设置导入导出 |
 
-当前界面提供 **USB 有线连接**。功能是否生效取决于设备的 Android 版本、ROM 和 ADB Shell 权限。进入 Fastboot 的按钮仅发送重启命令，本工具暂不提供 Fastboot 刷机功能。
+当前界面提供 **USB 有线连接** 和 **无线 ADB**。功能是否生效取决于设备的 Android 版本、ROM 和 ADB Shell 权限。进入 Fastboot 的按钮仅发送重启命令，本工具暂不提供 Fastboot 刷机功能。
 
 ## 快速开始
 
 ### 使用条件
 
-- 使用支持 WebUSB 的 Chrome 或 Edge 或 其他基于Chromium内核的浏览器（不分操作系统，手机安装Chrome也能用）。
-- 手机开启开发者选项和 USB 调试，使用 USB 数据线连接电脑。
-- 通过本机 `localhost` / `127.0.0.1` 或 HTTPS 网站访问页面。
-- Windows 需要能够正常识别手机的 ADB USB 接口，且手机端同意授权请求。
+- 安装 Android SDK Platform Tools，并确保 `adb` 已加入 PATH（也可以设置 `ADB_PATH` 指向 adb 可执行文件）。
+- USB 模式：手机开启开发者选项和 USB 调试，使用 USB 数据线连接电脑。
+- 无线模式：手机开启无线调试，或先使用 `adb connect <手机IP>:5555` 配对/连接。
+- 通过本机 `localhost` / `127.0.0.1` 访问页面。后端只监听本机回环地址。
 
 
 ### 本地运行
 
 仓库默认为 **HTML、CSS、JavaScript的前端分离版** ，同时提供AIO的 **单HTML整合版**。页面和第三方依赖均保存在本地，可直接本地部署或执行，无需构建或安装 npm 依赖。
 
-#### 方法1: 整合版
-下载项目docs中的index.html。已内嵌完整依赖，使用Chromium内核浏览器直接本地运行。
+#### 方法1: 后端版（推荐）
+运行 `server.cjs` 后访问根目录页面。所有 ADB 请求均经本机后端执行，USB 和无线 ADB 使用相同的前端功能。
 
 #### 方法2: 分离版
 1. 下载并解压完整项目，保留目录结构。
@@ -53,8 +53,8 @@
    node server.cjs
    ```
 
-4. 使用 Chrome 或 Edge 打开 [http://127.0.0.1:8124](http://127.0.0.1:8124)。
-5. 点击“连接设备”，在浏览器中选择手机；首次连接时，在手机上确认 USB 调试授权。
+4. 使用 Chrome、Edge 或其他现代浏览器打开 [http://127.0.0.1:8124](http://127.0.0.1:8124)。
+5. 在页面选择 USB 或无线 ADB；无线模式填写 `IP:端口`，USB 模式可从已发现设备中选择。
 
 按 `Ctrl+C` 停止服务。服务只监听本机地址 `127.0.0.1`。
 
@@ -67,7 +67,7 @@ node server.cjs
 
 随后打开 [http://127.0.0.1:8080](http://127.0.0.1:8080)。也可以使用其他能够正确提供 ES 模块的静态网页服务器。
 
-**请通过网页服务器打开分离版。** 直接双击 `index.html` 会使用 `file://` 地址，外部 ES 模块可能因浏览器的跨源限制而加载失败，导致连接按钮不可用。参见 [MDN：JavaScript 模块](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Modules)。
+**请通过本项目后端打开页面。** 直接双击 `index.html` 不会启动 ADB 后端，连接按钮也无法工作。
 
 ## 部署到网站
 
@@ -77,9 +77,8 @@ node server.cjs
 - 对外提供服务时使用 HTTPS。本机回环地址属于浏览器认可的可信来源，因此本地开发可以使用 HTTP。参见 [MDN：安全上下文](https://developer.mozilla.org/en-US/docs/Web/Security/Defenses/Secure_Contexts)。
 - JavaScript 应返回有效的 JavaScript MIME 类型，例如 `text/javascript`；CSS 应返回 `text/css`。不要将它们统一返回为 `application/octet-stream`。
 - 如果自行改为 CDN 引用，脚本、样式和模块依赖也应使用 HTTPS，避免被浏览器作为混合内容屏蔽。
-- `server.cjs` 是可选的本地启动工具；部署到静态托管平台后，访问者无需安装 Node.js。
-
-WebUSB 的授权和使用条件可参考 [Chrome WebUSB 文档](https://developer.chrome.com/docs/capabilities/usb)。
+- `server.cjs` 现在是必需的本地 ADB 后端；部署静态文件时仍需在用户本机另行运行后端并配置前端地址。
+- 后端提供 `/api/devices`、`/api/connect`、`/api/exec`、`/api/push`、`/api/pull` 和 WebSocket 终端接口。
 
 ## 目录结构
 
@@ -144,7 +143,7 @@ adb shell wm size
 ## 数据保存与文件下载
 
 - **设置、脚本文本、软件操作记录**：保存在当前网站的浏览器本地存储中。清理网站数据会删除这些内容；设置和脚本可通过页面提供的功能导出备份。
-- **ADB 身份密钥**：由 Tango 保存在浏览器 IndexedDB 中。可在断开设备后，通过软件设置清除。
+- **ADB 身份信息**：由本机 ADB Server 管理；清理浏览器数据不会删除本机 ADB 密钥。
 - **网站地址变更**：不同协议、域名或端口使用独立的网站存储，迁移部署地址后可能需要重新授权和导入设置。
 - **截图与电池统计**：需要及时下载保存，当前页面内的临时数据不会跨刷新保留。
 - **电池 CSV**：文件名使用连接设备读取到的机型名称和日期时间，例如 `一加 15T_2026-11-03_14-30-00.csv`；无法读取营销名称时回退到系统型号。
@@ -174,7 +173,7 @@ adb shell wm size
 - 修改样式：`css/styles.css`。
 - 修改页面交互与设置：`js/app.js`。
 - 修改设备命令和功能逻辑：`js/core.js`。
-- 修改 USB 连接、终端或脚本解释：分别查看 `js/transport.js`、`js/terminal.js`、`js/batch.js`。
+- 修改后端 ADB 连接、终端或脚本解释：分别查看 `server.cjs`、`js/transport.js`、`js/terminal.js`、`js/batch.js`。
 - 更新第三方组件时，检查模块引用与接口兼容性，并保留相应的版权及许可证文件。
 
 欢迎通过仓库的 Issues 反馈问题或提交 Pull Request。反馈时请提供工具版本、浏览器版本、电脑系统、设备型号、Android / ROM 版本、复现步骤和相关错误信息。提交截图或命令输出前，请隐藏设备序列号、主板 ID 等个人设备信息。
