@@ -1,9 +1,12 @@
 # 搞机工具箱 Web - 网页版 Android 玩机工具
 
 ## <p align="center"><a href="https://www.bilibili.com/video/BV1TB456ZEoo">使用教程</a>&emsp;&emsp;<a href="https://czjam.github.io/gjgjxweb/">在线体验</a>   </p>
-《搞机工具箱》是一款ADB图形化工具。当前版本由本机 Node.js 后端统一代理 ADB 请求，前端不再直接访问 USB ADB。
+《搞机工具箱》是一款 ADB 图形化工具。本仓库是基于原项目的后端代理改造版：由本机 Node.js 后端统一执行 ADB 请求，前端不再直接访问 USB ADB。
 
-本项目移植于个人开发的 [《搞机工具箱》PC版](https://www.bilibili.com/video/BV1QvHhzLELb) 。借助 [Tango](https://github.com/yume-chan/ya-webadb) 实现了 WebADB，并通过 [xterm.js](https://github.com/xtermjs/xterm.js) 打通 Android 原生 Shell 交互式终端，可运行在基于Chromium内核的浏览器中，实现免下载、免安装的跨平台使用体验。
+- 原项目：[CzJam/gjgjxweb](https://github.com/CzJam/gjgjxweb)
+- 本项目：[Linger-1212/gjgjxweb-remote](https://github.com/Linger-1212/gjgjxweb-remote)
+
+本项目保留原项目的页面布局和 Android 玩机功能，并将设备通信改为“浏览器前端 → 本机 Node.js 后端 → adb → Android 设备”的模式。前端仍通过 [xterm.js](https://github.com/xtermjs/xterm.js) 提供交互式终端；原项目使用的 Tango/WebUSB 代码作为历史第三方依赖保留，但不再是当前连接链路。
 
  [作者 @晨钟酱Official](https://space.bilibili.com/251013709)
  
@@ -11,6 +14,21 @@
  
 
 ## 功能
+
+## 与原项目的不同
+
+| 项目 | 原项目 | 本项目 |
+| --- | --- | --- |
+| ADB 执行位置 | 浏览器通过 WebUSB 直接连接 Android ADB | 本机 Node.js 后端调用系统 `adb` |
+| 连接方式 | USB WebUSB | USB ADB、无线 ADB |
+| 浏览器要求 | 需要支持 WebUSB 的 Chromium 浏览器 | 使用现代浏览器访问本机页面即可 |
+| 运行依赖 | 浏览器 WebUSB、Tango 浏览器端依赖 | Node.js、Android SDK Platform Tools、`adb` |
+| 终端通道 | 浏览器端 ADB PTY | 后端通过 WebSocket 转发 ADB Shell 输入输出 |
+| 文件传输 | 浏览器直接进行 ADB Sync | 文件经 HTTP 请求发送到后端，再由后端调用 `adb push/pull` |
+| 服务端职责 | 仅提供静态页面 | 同时提供静态页面和本机 ADB API |
+| 远程访问 | 不提供后端代理 | 后端默认只监听 `127.0.0.1`，不提供公网代理 |
+
+除上述通信层和运行方式外，主页、软件管理、显示控制、系统界面、电池管理、脚本、终端和设置等主要功能保持原项目设计。
 
 | 页面 | 主要功能 |
 | --- | --- |
@@ -39,12 +57,12 @@
 
 ### 本地运行
 
-仓库默认为 **HTML、CSS、JavaScript的前端分离版** ，同时提供AIO的 **单HTML整合版**。页面和第三方依赖均保存在本地，可直接本地部署或执行，无需构建或安装 npm 依赖。
+仓库包含前端分离文件和历史整合文件，但当前版本必须运行本机后端才能使用 ADB 功能。项目不需要构建或安装 npm 依赖。
 
 #### 方法1: 后端版（推荐）
 运行 `server.cjs` 后访问根目录页面。所有 ADB 请求均经本机后端执行，USB 和无线 ADB 使用相同的前端功能。
 
-#### 方法2: 分离版
+#### 方法2: 手动指定端口或 adb 路径
 1. 下载并解压完整项目，保留目录结构。
 2. 安装 [Node.js](https://nodejs.org/)，在包含 `server.cjs` 的目录打开终端。
 3. 运行：
@@ -65,19 +83,23 @@ $env:PORT = "8080"
 node server.cjs
 ```
 
-随后打开 [http://127.0.0.1:8080](http://127.0.0.1:8080)。也可以使用其他能够正确提供 ES 模块的静态网页服务器。
+随后打开 [http://127.0.0.1:8080](http://127.0.0.1:8080)。如果 `adb` 不在 PATH 中，可以指定可执行文件路径：
+
+```bash
+ADB_PATH=/path/to/adb PORT=8080 node server.cjs
+```
 
 **请通过本项目后端打开页面。** 直接双击 `index.html` 不会启动 ADB 后端，连接按钮也无法工作。
 
 ## 部署到网站
 
-将本目录中的完整文件上传到支持 HTTPS 的静态托管服务或 Web 服务器，以 `index.html` 为入口即可。第三方依赖已包含在 `js/vendor/` 中，运行时无需额外从 CDN 下载依赖，也不需要部署 ADB 后端。
+前端静态文件可以部署到 HTTPS 网站，但仅部署静态文件不能使用本项目的 ADB 功能。使用者仍需在自己的电脑上运行 `server.cjs`，并让前端请求指向该后端；当前默认前端请求同源 `/api`，因此推荐直接由 `server.cjs` 同时提供页面和 API。
 
 - 保留 `index.html`、`css/`、`js/`、`assets/` 的相对路径。
 - 对外提供服务时使用 HTTPS。本机回环地址属于浏览器认可的可信来源，因此本地开发可以使用 HTTP。参见 [MDN：安全上下文](https://developer.mozilla.org/en-US/docs/Web/Security/Defenses/Secure_Contexts)。
 - JavaScript 应返回有效的 JavaScript MIME 类型，例如 `text/javascript`；CSS 应返回 `text/css`。不要将它们统一返回为 `application/octet-stream`。
 - 如果自行改为 CDN 引用，脚本、样式和模块依赖也应使用 HTTPS，避免被浏览器作为混合内容屏蔽。
-- `server.cjs` 现在是必需的本地 ADB 后端；部署静态文件时仍需在用户本机另行运行后端并配置前端地址。
+- `server.cjs` 是当前版本的必需本地 ADB 后端，默认只监听 `127.0.0.1`，不会把 ADB 设备暴露到公网。
 - 后端提供 `/api/devices`、`/api/connect`、`/api/exec`、`/api/push`、`/api/pull` 和 WebSocket 终端接口。
 
 ## 目录结构
@@ -87,20 +109,20 @@ node server.cjs
 ├── index.html                 # 页面结构与模块入口
 ├── README.md                  # 项目说明
 ├── LICENSE                    # 项目 GPLv3 许可证全文
-├── server.cjs                 # 本地静态服务器（Node.js 标准库）
+├── server.cjs                 # 静态服务器、本机 ADB API 和 WebSocket 终端
 ├── LICENSE-Tango.txt          # Tango 相关组件许可
 ├── LICENSE-xterm.txt          # xterm.js 相关组件许可
 ├── assets/
 │   └── favicon.svg            # 页面图标
 ├── docs/
-│   └── index.html             # 完整本地运行文件
+│   └── index.html             # 历史整合版页面（不包含当前后端链路）
 ├── css/
 │   ├── styles.css             # 工具箱样式
 │   └── xterm.css              # 终端样式
 └── js/
     ├── app.js                 # 页面初始化、交互、连接状态与设置
     ├── core.js                # 命令执行与各功能逻辑
-    ├── transport.js           # Tango / WebUSB 连接与传输
+    ├── transport.js           # 前端到本机后端的 ADB 请求封装
     ├── terminal.js            # 交互式终端会话
     ├── batch.js               # BAT 语法子集解释器
     └── vendor/                # 本地第三方依赖
@@ -149,25 +171,25 @@ adb shell wm size
 - **电池 CSV**：文件名使用连接设备读取到的机型名称和日期时间，例如 `一加 15T_2026-11-03_14-30-00.csv`；无法读取营销名称时回退到系统型号。
 - **下载目录**：可在支持的浏览器中授权保存目录；未授权时使用普通浏览器下载。截图“下载后删除手机原图”仅在确认写入所选目录后执行，普通浏览器下载会保留手机原图。
 
-设备命令通过浏览器与手机之间的 USB 连接执行，不经过本项目的远程 ADB 服务。文件与目录访问需要用户通过浏览器选择或授权。
+设备命令通过本机后端调用 `adb` 执行。USB 和无线 ADB 使用相同的后端接口；文件上传先发送到后端临时目录，再由后端执行 `adb push`，下载则由后端执行 `adb pull` 后返回浏览器。后端默认只监听本机回环地址，不是公网远程 ADB 服务。
 
 ## 常见问题
 
 | 问题 | 排查方法 |
 | --- | --- |
-| 连接按钮是灰色的 | 使用 Chrome / Edge，通过本地服务器或 HTTPS 打开完整目录；检查开发者工具中的模块加载错误、404 和 MIME 类型错误。 |
-| 提示当前 ADB 接口被占用 | 在任务管理器中结束占用接口的 `adb.exe`，关闭其他 ADB 工具及已连接设备的 WebADB 页面，再重新连接。 |
-| 浏览器找不到设备 | 检查 USB 调试、数据线与 USB 接口，以及 Windows 下的 ADB 驱动；确认数据线支持数据传输。 |
-| 手机没有授权弹框 | 解锁手机并检查 USB 调试；已有有效授权时可能不会再次弹框。仍无法连接时，可在手机开发者选项撤销 USB 调试授权后重试。 |
-| 资源被屏蔽为 `mixed-content` | HTTPS 页面引用了 HTTP 资源，需将相关资源及其依赖改为 HTTPS。 |
-| 提示 `application/octet-stream` 或 MIME 错误 | 检查静态资源服务器的响应头，按扩展名设置正确的 JavaScript / CSS 类型。 |
+| 连接按钮是灰色的 | 确认已通过 `node server.cjs` 启动后端，并从 `http://127.0.0.1:8124` 打开页面；检查 `/api/health` 是否返回成功。 |
+| 后端提示找不到 adb | 安装 Android SDK Platform Tools，将 `adb` 加入 PATH，或使用 `ADB_PATH` 指定可执行文件。 |
+| USB 设备找不到 | 检查 USB 调试、数据线、USB 接口和系统 ADB 驱动；在终端运行 `adb devices` 确认设备状态为 `device`。 |
+| 无线设备找不到 | 在页面填写设备 `IP:端口`；确认手机和电脑在同一网络，并先在手机开启无线调试。 |
+| 提示 ADB 接口被占用 | 关闭其他 ADB 工具或占用设备的进程，再运行 `adb kill-server` 后重试。 |
+| 页面提示跨域或混合内容 | 推荐由本项目 `server.cjs` 同源提供页面和 API；不要直接用 `file://` 打开，也不要把后端暴露到不可信网络。 |
 | 命令返回权限不足、设置不生效 | Android 版本、厂商 ROM 和系统策略可能限制 ADB Shell 权限；部分设备还需开启厂商提供的 USB 调试安全选项。 |
 | CPU 频率、功率或主板 ID 无法读取 | 部分设备不开放对应系统节点。功率记录依赖设备提供的电流、电压等数据，不等同于外接充电功率计测量值。 |
-| 关闭或刷新页面后连接断开 | USB 会话依附于当前页面，需要重新连接；请提前下载需要保留的数据。 |
+| 关闭或刷新页面后连接断开 | 页面会关闭当前后端会话，需要重新连接；请提前下载需要保留的数据。 |
 
 ## 开发与反馈
 
-本分离版直接使用原生 JavaScript ES 模块。修改后启动 `server.cjs` 并刷新页面即可查看效果，无需执行依赖安装或打包命令。
+本项目直接使用原生 JavaScript ES 模块。修改后启动 `server.cjs` 并刷新页面即可查看效果，无需执行依赖安装或打包命令。`docs/index.html` 是历史整合版，不应作为当前后端版的运行入口。
 
 - 修改页面布局：`index.html`。
 - 修改样式：`css/styles.css`。
@@ -186,7 +208,7 @@ adb shell wm size
 
 | 项目 | 使用组件与版本 | 许可 |
 | --- | --- | --- |
-| [Tango / ya-webadb](https://github.com/yume-chan/ya-webadb) | `@yume-chan/adb` 2.6.4、`adb-daemon-webusb` 2.3.2、`adb-credential-web` 2.1.0、`stream-extra` 2.6.1、`struct` 2.3.2、`event` 2.0.0、`async` 4.1.3、`no-data-view` 2.0.0 | [MIT](LICENSE-Tango.txt) |
+| [Tango / ya-webadb](https://github.com/yume-chan/ya-webadb) | 原项目遗留的浏览器端 ADB/WebUSB 组件，当前后端版连接链路不再使用 | [MIT](LICENSE-Tango.txt) |
 | [xterm.js](https://github.com/xtermjs/xterm.js) | `@xterm/xterm` 5.5.0、`@xterm/addon-fit` 0.10.0 | [MIT](LICENSE-xterm.txt) |
 
 ### 项目许可
