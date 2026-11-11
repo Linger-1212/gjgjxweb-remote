@@ -101,6 +101,16 @@ const GJWebUsbTransport = (() => {
         throw error;
       }
     }
+      async captureFrame({signal} = {}) {
+        const shell = this.adb.subprocess.shellProtocol;
+        if (!shell) throw new Error('当前设备不支持 WebUSB Shell 协议');
+        const proc = await shell.spawn('screencap -p', signal);
+        try {
+          const bytes = await Promise.all([collect(proc.stdout, {limit: 32 * 1024 * 1024}), proc.exited, proc.stdin.close()]);
+          if (bytes[1] !== 0) throw new Error('设备截屏失败');
+          return bytes[0];
+        } finally { await proc.kill().catch(() => {}); }
+      }
     async withSync(work, signal) {
       GJ.checkAbort(signal);
       const sync = await this.adb.sync();

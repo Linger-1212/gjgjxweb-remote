@@ -35,7 +35,7 @@
 | 主页 | 设备与系统信息、CPU 频率、主板 ID 隐藏、重启、关机、重启至 Bootloader / Fastbootd / Recovery / EDL |
 | 软件管理 | 包名与前台活动读取、启用/禁用、运行、强行停止、卸载与保留数据卸载、清除数据、软件信息、恢复系统软件、卸载锁定、操作记录、Google 套件批量管理 |
 | 安装与文件传输 | APK 安装、拆分 APK 安装、推送文件、提取安装包 |
-| 显示控制 | 分辨率、显示密度（DPI / dp）、按键模拟、截图 |
+| 显示控制 | 分辨率、显示密度（DPI / dp）、按键模拟、截图、网页投屏与触控 |
 | 系统界面 | 状态栏图标隐藏、时钟与快捷设置、沉浸模式、Wi-Fi 网络检测相关设置 |
 | 电池管理 | 电池信息、电池参数模拟与恢复、定时统计、可选功率记录、CSV 导出 |
 | 无极调节 | 字体大小倍数、窗口/过渡/程序动画倍率、自动锁屏时间 |
@@ -103,7 +103,9 @@ ADB_PATH=/path/to/adb PORT=8080 node server.cjs
 - JavaScript 应返回有效的 JavaScript MIME 类型，例如 `text/javascript`；CSS 应返回 `text/css`。不要将它们统一返回为 `application/octet-stream`。
 - 如果自行改为 CDN 引用，脚本、样式和模块依赖也应使用 HTTPS，避免被浏览器作为混合内容屏蔽。
 - `server.cjs` 是当前版本的必需本地 ADB 后端，默认只监听 `127.0.0.1`，不会把 ADB 设备暴露到公网。
-- 后端提供 `/api/devices`、`/api/connect`、`/api/exec`、`/api/push`、`/api/pull` 和 WebSocket 终端接口。
+- 后端提供 `/api/devices`、`/api/connect`、`/api/exec`、`/api/frame`、`/api/push`、`/api/pull` 和 WebSocket 终端接口。
+- 显示控制中的网页投屏按设定帧率抓取设备画面，并按“传输节流上限”调度 PNG 帧；该参数不是视频编码码率，实际帧率还会受设备截图速度、ADB USB/无线链路和服务端处理速度影响。点击投屏画面会换算为设备坐标并执行 `input tap`。
+- 当前投屏采用逐帧 PNG 截图，若需要稳定的高帧率和真正可控的视频码率，应改用长连接 H.264 `screenrecord` 流。
 
 ## 目录结构
 

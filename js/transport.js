@@ -32,6 +32,12 @@ const GJTransport = (() => {
       if(result.stdout)onStdout?.(result.stdout);if(result.stderr)onStderr?.(result.stderr);
       return result;
     }
+    async captureFrame({signal}={}) {
+      GJ.checkAbort(signal);
+      const response=await fetch(endpoint()+'/frame',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({serial:this.serial}),signal});
+      if(!response.ok)throw new Error((await response.text())||`后端请求失败（${response.status}）`);
+      return new Uint8Array(await response.arrayBuffer());
+    }
     async openTerminal() {
       const url=new URL('/api/terminal',location.href);url.protocol=url.protocol==='https:'?'wss:':'ws:';
       url.searchParams.set('serial',this.serial);
