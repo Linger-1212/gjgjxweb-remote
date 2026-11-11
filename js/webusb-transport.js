@@ -111,6 +111,7 @@ const GJWebUsbTransport = (() => {
           return bytes[0];
         } finally { await proc.kill().catch(() => {}); }
       }
+      openCast() { throw new Error('网页端 WebADB 暂不支持 H.264 投屏，请切换到后端 ADB 控制'); }
     async withSync(work, signal) {
       GJ.checkAbort(signal);
       const sync = await this.adb.sync();

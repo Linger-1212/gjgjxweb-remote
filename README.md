@@ -103,9 +103,17 @@ ADB_PATH=/path/to/adb PORT=8080 node server.cjs
 - JavaScript 应返回有效的 JavaScript MIME 类型，例如 `text/javascript`；CSS 应返回 `text/css`。不要将它们统一返回为 `application/octet-stream`。
 - 如果自行改为 CDN 引用，脚本、样式和模块依赖也应使用 HTTPS，避免被浏览器作为混合内容屏蔽。
 - `server.cjs` 是当前版本的必需本地 ADB 后端，默认只监听 `127.0.0.1`，不会把 ADB 设备暴露到公网。
-- 后端提供 `/api/devices`、`/api/connect`、`/api/exec`、`/api/frame`、`/api/push`、`/api/pull` 和 WebSocket 终端接口。
-- 显示控制中的网页投屏按设定帧率抓取设备画面，并按“传输节流上限”调度 PNG 帧；该参数不是视频编码码率，实际帧率还会受设备截图速度、ADB USB/无线链路和服务端处理速度影响。点击投屏画面会换算为设备坐标并执行 `input tap`。
-- 当前投屏采用逐帧 PNG 截图，若需要稳定的高帧率和真正可控的视频码率，应改用长连接 H.264 `screenrecord` 流。
+- 后端提供 `/api/devices`、`/api/connect`、`/api/exec`、`/api/frame`、`/api/push`、`/api/pull`、`/api/cast` 和 WebSocket 终端接口。
+- 显示控制中的网页投屏使用 Android `screenrecord` 长连接输出 H.264；视频码率会传给设备编码器，视频帧率设置用于解码时间基准（Android `screenrecord` 的实际采样帧率由设备/系统版本决定）。视频码率是实际编码码率（Kbps），最终效果仍受设备编码能力和 ADB USB/无线链路影响。点击“开始投屏”后会立即展开画布并显示连接状态，首个 H.264 关键帧到达后替换为设备画面。
+- 点击投屏画面会换算为设备坐标并执行 `input tap` / `input swipe`。后端模式下触控命令复用投屏 WebSocket 的持久 ADB shell，减少每次操作启动 ADB 和 HTTP 请求的延迟；如果投屏连接不可用，则回退到普通 `/api/exec` 请求。
+- H.264 投屏通过 WebSocket 二进制流传输，并由支持 WebCodecs 的新版 Chrome / Edge 解码；网页端 WebADB 模式暂不提供该后端投屏通道，请切换到后端 ADB。
+
+### 投屏与触控说明
+
+- 使用后端 ADB 模式，并在 Chrome / Edge 中打开页面；网页端 WebADB 模式不提供当前 H.264 投屏通道。
+- “目标帧率”用于前端解码时间基准，不会强制 Android `screenrecord` 达到该帧率；设备编码能力、USB / 无线 ADB 链路和系统版本都会影响实际帧率。
+- “视频码率（Kbps）”会转换为 `screenrecord --bit-rate` 传给设备编码器，是真实的视频编码码率控制，不是简单的网络节流上限。
+- 投屏停止时会关闭 WebSocket 和持久 ADB shell；如果服务异常退出，可重新启动 `node server.cjs` 后再连接。
 
 ## 目录结构
 

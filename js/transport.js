@@ -38,6 +38,10 @@ const GJTransport = (() => {
       if(!response.ok)throw new Error((await response.text())||`后端请求失败（${response.status}）`);
       return new Uint8Array(await response.arrayBuffer());
     }
+    openCast({bitrate=8000000,fps=30,size,onData,onError,onClose}={}) {
+      const url=new URL('/api/cast',location.href);url.protocol=url.protocol==='https:'?'wss:':'ws:';url.searchParams.set('serial',this.serial);url.searchParams.set('bitrate',String(bitrate));if(size)url.searchParams.set('size',size);
+      let closing=false;const socket=new WebSocket(url);socket.binaryType='arraybuffer';socket.onmessage=event=>{if(closing)return;if(typeof event.data==='string'){try{const message=JSON.parse(event.data);if(message.type==='error')onError?.(new Error(message.error));}catch(error){onError?.(error);}}else{try{onData?.(new Uint8Array(event.data));}catch(error){onError?.(error);}}};socket.onerror=()=>{if(!closing)onError?.(new Error('H.264 投屏 WebSocket 连接失败，请检查后端服务'));};socket.onclose=event=>{if(!closing&&event.code!==1000&&event.code!==1005)onError?.(new Error(`H.264 投屏连接已断开（${event.code}${event.reason?`：${event.reason}`:''}）`));onClose?.();};return {sendControl:message=>{if(closing||socket.readyState!==WebSocket.OPEN)return false;try{socket.send(JSON.stringify({type:'control',action:message.type,x:message.x,y:message.y,x2:message.x2,y2:message.y2,duration:message.duration}));return true;}catch{return false;}},close:()=>{closing=true;if(socket.readyState===WebSocket.OPEN||socket.readyState===WebSocket.CONNECTING)socket.close(1000,'client stopped');}};
+    }
     async openTerminal() {
       const url=new URL('/api/terminal',location.href);url.protocol=url.protocol==='https:'?'wss:':'ws:';
       url.searchParams.set('serial',this.serial);
