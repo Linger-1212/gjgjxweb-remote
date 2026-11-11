@@ -6,7 +6,7 @@
 - 原项目：[CzJam/gjgjxweb](https://github.com/CzJam/gjgjxweb)
 - 本项目：[Linger-1212/gjgjxweb-remote](https://github.com/Linger-1212/gjgjxweb-remote)
 
-本项目保留原项目的页面布局和 Android 玩机功能，并将设备通信改为“浏览器前端 → 本机 Node.js 后端 → adb → Android 设备”的模式。前端仍通过 [xterm.js](https://github.com/xtermjs/xterm.js) 提供交互式终端；原项目使用的 Tango/WebUSB 代码作为历史第三方依赖保留，但不再是当前连接链路。
+本项目保留原项目的页面布局和 Android 玩机功能，启动页可选择“后端 ADB”或原项目的“网页端 WebADB”控制。前者通过“浏览器前端 → 本机 Node.js 后端 → adb → Android 设备”执行，后者通过浏览器 WebUSB 直接连接设备。前端仍通过 [xterm.js](https://github.com/xtermjs/xterm.js) 提供交互式终端。
 
  [作者 @晨钟酱Official](https://space.bilibili.com/251013709)
  
@@ -19,13 +19,13 @@
 
 | 项目 | 原项目 | 本项目 |
 | --- | --- | --- |
-| ADB 执行位置 | 浏览器通过 WebUSB 直接连接 Android ADB | 本机 Node.js 后端调用系统 `adb` |
-| 连接方式 | USB WebUSB | USB ADB、无线 ADB |
-| 浏览器要求 | 需要支持 WebUSB 的 Chromium 浏览器 | 使用现代浏览器访问本机页面即可 |
-| 运行依赖 | 浏览器 WebUSB、Tango 浏览器端依赖 | Node.js、Android SDK Platform Tools、`adb` |
-| 终端通道 | 浏览器端 ADB PTY | 后端通过 WebSocket 转发 ADB Shell 输入输出 |
-| 文件传输 | 浏览器直接进行 ADB Sync | 文件经 HTTP 请求发送到后端，再由后端调用 `adb push/pull` |
-| 服务端职责 | 仅提供静态页面 | 同时提供静态页面和本机 ADB API |
+| ADB 执行位置 | 浏览器通过 WebUSB 直接连接 Android ADB | 可选浏览器 WebUSB，或本机 Node.js 后端调用系统 `adb` |
+| 连接方式 | USB WebUSB | USB WebUSB、USB ADB、无线 ADB |
+| 浏览器要求 | 需要支持 WebUSB 的 Chromium 浏览器 | WebUSB 方式需要 Chromium；后端方式使用现代浏览器即可 |
+| 运行依赖 | 浏览器 WebUSB、Tango 浏览器端依赖 | WebUSB 方式无需后端；后端方式需要 Node.js、Platform Tools、`adb` |
+| 终端通道 | 浏览器端 ADB PTY | 按开始页选择，使用浏览器端 PTY 或后端 WebSocket |
+| 文件传输 | 浏览器直接进行 ADB Sync | 按开始页选择，使用浏览器端 Sync 或后端 `adb push/pull` |
+| 服务端职责 | 仅提供静态页面 | 可选提供静态页面、本机 ADB API 和 WebSocket 终端 |
 | 远程访问 | 不提供后端代理 | 后端默认只监听 `127.0.0.1`，不提供公网代理 |
 
 除上述通信层和运行方式外，主页、软件管理、显示控制、系统界面、电池管理、脚本、终端和设置等主要功能保持原项目设计。
@@ -43,7 +43,7 @@
 | ADB 终端 | Android Shell 交互会话、ANSI 显示、命令历史、补全、复制、清屏与中断 |
 | 软件设置 | 默认启动页、主题配色、界面缩放、CPU 更新间隔、文件接收路径、安装与截图选项、设置导入导出 |
 
-当前界面提供 **USB 有线连接** 和 **无线 ADB**。功能是否生效取决于设备的 Android 版本、ROM 和 ADB Shell 权限。进入 Fastboot 的按钮仅发送重启命令，本工具暂不提供 Fastboot 刷机功能。
+开始页提供 **后端 ADB** 与 **网页端 WebADB** 两种控制方式。后端方式支持 USB 有线和无线 ADB；网页端方式使用 Chrome / Edge 的 WebUSB 直接连接 USB 设备。功能是否生效取决于设备的 Android 版本、ROM 和 ADB Shell 权限。进入 Fastboot 的按钮仅发送重启命令，本工具暂不提供 Fastboot 刷机功能。
 
 ## 快速开始
 
@@ -59,10 +59,13 @@
 
 仓库包含前端分离文件和历史整合文件，但当前版本必须运行本机后端才能使用 ADB 功能。项目不需要构建或安装 npm 依赖。
 
-#### 方法1: 后端版（推荐）
-运行 `server.cjs` 后访问根目录页面。所有 ADB 请求均经本机后端执行，USB 和无线 ADB 使用相同的前端功能。
+#### 方法1: 后端 ADB
+运行 `server.cjs` 后访问根目录页面，在开始页选择“后端 ADB”。所有 ADB 请求均经本机后端执行，USB 和无线 ADB 使用相同的前端功能。
 
-#### 方法2: 手动指定端口或 adb 路径
+#### 方法2: 网页端 WebADB
+可直接通过 HTTPS 或 `localhost` 打开页面，在开始页选择“网页端 WebADB”。使用 Chrome / Edge 通过 USB 选择设备并在手机上授权；此方式不需要运行本机 ADB 后端。
+
+#### 后端参数
 1. 下载并解压完整项目，保留目录结构。
 2. 安装 [Node.js](https://nodejs.org/)，在包含 `server.cjs` 的目录打开终端。
 3. 运行：
